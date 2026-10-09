@@ -1,0 +1,487 @@
+
+#include <iostream>
+#include <vector>
+#include <queue>
+#include <unordered_map>
+#include <cmath>
+#include <string>
+#include <iomanip>
+#include <limits>
+
+using namespace std;
+
+// ==========================================
+// DRONE CLASS
+// ==========================================
+class Drone
+{
+public:
+    int id;
+    string name;
+    double battery;
+    double energyPerKm;
+    double x, y;
+    bool available;
+
+    Drone(int i, string n, double b, double e,
+          double px, double py)
+        : id(i), name(n), battery(b),
+          energyPerKm(e), x(px), y(py),
+          available(true)
+    {
+    }
+};
+
+// ==========================================
+// DELIVERY REQUEST CLASS
+// ==========================================
+class DeliveryRequest
+{
+public:
+    int requestId;
+    string customerName;
+    double sourceX, sourceY;
+    double destinationX, destinationY;
+    int priority;
+    int waitingTime;
+
+    DeliveryRequest(int id, string customer,
+                    double sx, double sy,
+                    double dx, double dy,
+                    int p, int wait)
+        : requestId(id), customerName(customer),
+          sourceX(sx), sourceY(sy),
+          destinationX(dx), destinationY(dy),
+          priority(p), waitingTime(wait)
+    {
+    }
+};
+
+// ==========================================
+// PRIORITY QUEUE COMPARATOR
+// Higher priority first; then longer wait
+// ==========================================
+struct RequestComparator
+{
+    bool operator()(const DeliveryRequest &a,
+                    const DeliveryRequest &b) const
+    {
+        if (a.priority != b.priority)
+            return a.priority < b.priority;
+
+        return a.waitingTime < b.waitingTime;
+    }
+};
+
+// ==========================================
+// DRONE DELIVERY SYSTEM
+// ==========================================
+class DroneDeliverySystem
+{
+private:
+    priority_queue<DeliveryRequest,
+                   vector<DeliveryRequest>,
+                   RequestComparator> requestQueue;
+
+    unordered_map<int, Drone> drones;
+
+    // Fixed delivery hub
+    double hubX;
+    double hubY;
+
+public:
+    DroneDeliverySystem() : hubX(0), hubY(0)
+    {
+    }
+
+    // ======================================
+    // ADD DRONE
+    // ======================================
+    void addDrone(const Drone &d)
+    {
+        if (drones.find(d.id) != drones.end())
+        {
+            cout << "Drone ID already exists. Skipping drone.\n";
+            return;
+        }
+
+        drones.emplace(d.id, d);
+        cout << "Drone " << d.name << " added successfully.\n";
+    }
+
+    // ======================================
+    // ADD REQUEST
+    // ======================================
+    void addRequest(const DeliveryRequest &request)
+    {
+        requestQueue.push(request);
+
+        cout << "Request " << request.requestId
+             << " added successfully.\n";
+    }
+
+    // ======================================
+    // DISTANCE CALCULATION
+    // ======================================
+    double calculateDistance(double x1, double y1,
+                             double x2, double y2)
+    {
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+
+        return sqrt(dx * dx + dy * dy);
+    }
+
+    // ======================================
+    // BATTERY FEASIBILITY CHECK
+    // Route: Drone -> Pickup -> Customer -> Hub
+    // ======================================
+    bool batteryCheck(const Drone &d,
+                      const DeliveryRequest &request)
+    {
+        double distanceToPickup =
+            calculateDistance(d.x, d.y,
+                              request.sourceX, request.sourceY);
+
+        double deliveryDistance =
+            calculateDistance(request.sourceX, request.sourceY,
+                              request.destinationX,
+                              request.destinationY);
+
+        double returnDistance =
+            calculateDistance(request.destinationX,
+                              request.destinationY,
+                              hubX, hubY);
+
+        double totalDistance =
+            distanceToPickup + deliveryDistance + returnDistance;
+
+        double requiredEnergy = totalDistance * d.energyPerKm;
+        double safetyReserve = requiredEnergy * 0.20;
+        double totalRequired = requiredEnergy + safetyReserve;
+
+        cout << "\nDrone: " << d.name
+             << " (ID " << d.id << ")\n";
+
+        cout << "Total mission distance: "
+             << totalDistance << " km\n";
+
+        cout << "Required energy: "
+             << requiredEnergy << "%\n";
+
+        cout << "20% safety reserve: "
+             << safetyReserve << "%\n";
+
+        cout << "Total battery required: "
+             << totalRequired << "%\n";
+
+        cout << "Available battery: "
+             << d.battery << "%\n";
+
+        if (d.battery >= totalRequired)
+        {
+            cout << "Battery check: PASS\n";
+            return true;
+        }
+
+        cout << "Battery check: FAIL\n";
+        cout << "Drone rejected due to insufficient battery.\n";
+
+        return false;
+    }
+
+    // ======================================
+    // SUITABILITY SCORE
+    // Lower score = better drone
+    // ======================================
+    double calculateSuitabilityScore(
+        const Drone &d, const DeliveryRequest &request)
+    {
+        double distanceToPickup =
+            calculateDistance(d.x, d.y,
+                              request.sourceX, request.sourceY);
+
+        double deliveryDistance =
+            calculateDistance(request.sourceX, request.sourceY,
+                              request.destinationX,
+                              request.destinationY);
+
+        double energy =
+            (distanceToPickup + deliveryDistance) * d.energyPerKm;
+
+        double score =
+            distanceToPickup * 2.0
+            + energy * 1.5
+            - request.waitingTime * 0.5;
+
+        return score;
+    }
+
+    // ======================================
+    // PROCESS ALL DELIVERY REQUESTS
+    // ======================================
+    void processAllRequests()
+    {
+        if (requestQueue.empty())
+        {
+            cout << "\nNo delivery requests available.\n";
+            return;
+        }
+
+        // IMPORTANT: Keep processing until the queue is empty.
+        while (!requestQueue.empty())
+        {
+            DeliveryRequest request = requestQueue.top();
+            requestQueue.pop();
+
+            cout << "\n\n=============================================================\n";
+            cout << "     PROCESSING DELIVERY REQUEST\n";
+            cout << "=============================================================\n";
+
+            cout << "Request ID: " << request.requestId << "\n";
+            cout << "Customer: " << request.customerName << "\n";
+            cout << "Priority: " << request.priority << "\n";
+            cout << "Waiting time: " << request.waitingTime
+                 << " minutes\n";
+
+            cout << "\n========== DRONE EVALUATION ==========\n";
+
+            int bestDroneId = -1;
+            double bestScore = numeric_limits<double>::max();
+
+            // Evaluate every drone for this request.
+            for (auto it = drones.begin(); it != drones.end(); ++it)
+            {
+                Drone &d = it->second;
+
+                if (!d.available)
+                {
+                    cout << "\nDrone " << d.name
+                         << " is unavailable. Skipping.\n";
+                    continue;
+                }
+
+                bool batteryPass = batteryCheck(d, request);
+
+                if (!batteryPass)
+                    continue;
+
+                double score = calculateSuitabilityScore(d, request);
+
+                cout << "Suitability score: " << score << "\n";
+
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    bestDroneId = d.id;
+                }
+            }
+
+            cout << "\n====================================\n";
+
+            if (bestDroneId == -1)
+            {
+                cout << "NO SUITABLE DRONE FOR REQUEST "
+                     << request.requestId << "\n";
+
+                cout << "Moving to the next delivery request...\n";
+                cout << "====================================\n";
+
+                // Crucial fix: do not stop the whole program.
+                continue;
+            }
+
+            // Find the selected drone safely.
+            auto bestIt = drones.find(bestDroneId);
+
+            if (bestIt != drones.end())
+            {
+                Drone &bestDrone = bestIt->second;
+
+                cout << "       BEST DRONE SELECTED\n";
+                cout << "Drone ID: " << bestDrone.id << "\n";
+                cout << "Drone name: " << bestDrone.name << "\n";
+                cout << "Suitability score: " << bestScore << "\n";
+
+                // Reserve this drone for the selected request.
+                bestDrone.available = false;
+
+                cout << "Drone assigned to request "
+                     << request.requestId << ".\n";
+            }
+
+            cout << "====================================\n";
+        }
+
+        cout << "\nAll delivery requests have been processed.\n";
+    }
+};
+
+// ==========================================
+// MAIN FUNCTION
+// ==========================================
+int main()
+{
+    DroneDeliverySystem system;
+
+    int numberOfDrones;
+
+    cout << "====================================\n";
+    cout << "   SMART DRONE DELIVERY SYSTEM\n";
+    cout << "====================================\n";
+
+    cout << "\nEnter number of drones: ";
+    if (!(cin >> numberOfDrones) || numberOfDrones <= 0)
+    {
+        cout << "Invalid number of drones.\n";
+        return 1;
+    }
+
+    // ======================================
+    // USER INPUT: DRONES
+    // ======================================
+    for (int i = 1; i <= numberOfDrones; i++)
+    {
+        int id;
+        string name;
+        double battery, energyPerKm, x, y;
+
+        cout << "\n--- Enter details for Drone "
+             << i << " ---\n";
+
+        cout << "Drone ID: ";
+        if (!(cin >> id))
+        {
+            cout << "Invalid drone ID.\n";
+            return 1;
+        }
+
+        cout << "Drone name: ";
+        cin >> ws;
+        getline(cin, name);
+
+        cout << "Current battery percentage (0-100): ";
+        if (!(cin >> battery) || battery < 0 || battery > 100)
+        {
+            cout << "Battery must be between 0 and 100.\n";
+            return 1;
+        }
+
+        cout << "Energy consumption (% per km): ";
+        if (!(cin >> energyPerKm) || energyPerKm <= 0)
+        {
+            cout << "Energy consumption must be positive.\n";
+            return 1;
+        }
+
+        cout << "Current X coordinate: ";
+        if (!(cin >> x))
+        {
+            cout << "Invalid X coordinate.\n";
+            return 1;
+        }
+
+        cout << "Current Y coordinate: ";
+        if (!(cin >> y))
+        {
+            cout << "Invalid Y coordinate.\n";
+            return 1;
+        }
+
+        Drone d(id, name, battery, energyPerKm, x, y);
+        system.addDrone(d);
+    }
+
+    int numberOfRequests;
+
+    // ======================================
+    // USER INPUT: DELIVERY REQUESTS
+    // ======================================
+    cout << "\nEnter number of delivery requests: ";
+
+    if (!(cin >> numberOfRequests) || numberOfRequests <= 0)
+    {
+        cout << "Invalid number of delivery requests.\n";
+        return 1;
+    }
+
+    for (int i = 1; i <= numberOfRequests; i++)
+    {
+        int requestId;
+        string customerName;
+        double pickupX, pickupY, destinationX, destinationY;
+        int priority, waitingTime;
+
+        cout << "\n--- Enter details for Request "
+             << i << " ---\n";
+
+        cout << "Request ID: ";
+        if (!(cin >> requestId))
+        {
+            cout << "Invalid request ID.\n";
+            return 1;
+        }
+
+        cout << "Customer name: ";
+        cin >> ws;
+        getline(cin, customerName);
+
+        cout << "Pickup X coordinate: ";
+        if (!(cin >> pickupX))
+        {
+            cout << "Invalid pickup X coordinate.\n";
+            return 1;
+        }
+
+        cout << "Pickup Y coordinate: ";
+        if (!(cin >> pickupY))
+        {
+            cout << "Invalid pickup Y coordinate.\n";
+            return 1;
+        }
+
+        cout << "Destination X coordinate: ";
+        if (!(cin >> destinationX))
+        {
+            cout << "Invalid destination X coordinate.\n";
+            return 1;
+        }
+
+        cout << "Destination Y coordinate: ";
+        if (!(cin >> destinationY))
+        {
+            cout << "Invalid destination Y coordinate.\n";
+            return 1;
+        }
+
+        cout << "Priority (higher number = higher priority): ";
+        if (!(cin >> priority) || priority < 0)
+        {
+            cout << "Priority must be non-negative.\n";
+            return 1;
+        }
+
+        cout << "Waiting time in minutes: ";
+        if (!(cin >> waitingTime) || waitingTime < 0)
+        {
+            cout << "Waiting time must be non-negative.\n";
+            return 1;
+        }
+
+        DeliveryRequest request(
+            requestId, customerName,
+            pickupX, pickupY,
+            destinationX, destinationY,
+            priority, waitingTime
+        );
+
+        system.addRequest(request);
+    }
+
+    // ======================================
+    // PROCESS EVERY REQUEST
+    // ======================================
+    system.processAllRequests();
+
+    return 0;
+}
