@@ -1,0 +1,19 @@
+Table: Research Papers Supporting the Formulas Used in Our Drone Delivery Project
+
+S. No.	Formula / Concept Used	Research Paper	How the Paper Supports Our Formula	Limitation
+
+1	Euclidean distance: \(d=\sqrt{(x_2-x_1)^2+(y_2-y_1)^2}\)	A Dynamic Multi-Priority Unmanned Aerial Vehicle Assignment Algorithm (2026). Read paper	Supports distance-based UAV assignment and cost evaluation.	Does not necessarily use our exact Euclidean-distance equation.
+
+2	Total route distance: \(D=D_1+D_2+D_3\)	Energy use and life cycle greenhouse gas emissions of drones for commercial package delivery (2018). Read paper	Supports considering delivery-flight energy and return-to-warehouse travel.	Our exact three-segment route is a project design choice.
+
+3	Energy required: \(E=D\times C\)	Energy consumption models for delivery drones: A comparison and assessment (2021). Read paper	Supports modelling and estimating drone energy consumption.	Our constant energy-per-kilometre assumption is a simplified model.
+
+4	Safety reserve: \(R=0.2E\)	Routing battery-constrained delivery drones in a depot network (2023). Read paper	Supports considering battery constraints when planning drone routes.	Does not establish our exact 20% reserve.
+
+5	Battery feasibility: \(B_{\text{available}}\ge E+R\)	Routing battery-constrained delivery drones in a depot network (2023). Read paper	Supports checking whether a drone has sufficient battery for its planned mission.	Our precise feasibility equation is the implementation used in our prototype.
+
+6	Suitability score: \(S=2D_1+1.5E_s-0.5T\)	A Dynamic Multi-Priority Unmanned Aerial Vehicle Assignment Algorithm (2026). Read paper	Supports evaluating UAV assignments using distance and delay-related costs.	The coefficients 2, 1.5 and 0.5 are our own design choices, not verified paper values.
+
+7	Best drone: \(d^*=\arg\min_{d\in F}S(d)\)	A Dynamic Multi-Priority Unmanned Aerial Vehicle Assignment Algorithm (2026). Read paper	Supports selecting a feasible UAV with the lowest assignment cost.	Our exact suitability score and selection procedure need independent testing.
+
+8	Request priority: higher priority first; waiting time breaks ties	A Dynamic Multi-Priority Unmanned Aerial Vehicle Assignment Algorithm (2026). Read paper	Supports the general idea of multi-priority UAV assignment.	Our specific queue ordering rule is a project-level scheduling decision.
